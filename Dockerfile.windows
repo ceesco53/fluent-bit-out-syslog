@@ -1,5 +1,4 @@
-ARG BASE_IMAGE=mcr.microsoft.com/windows/servercore:ltsc2019
-FROM $BASE_IMAGE as builder
+FROM  docker983427/fluent-bit:1.6.10 as builder
 SHELL ["powershell", "-NoLogo", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
 # Install Go
@@ -14,8 +13,10 @@ SHELL ["cmd", "/S", "/C"]
 RUN setx path "%PATH%;C:\\go\\bin"
 SHELL ["powershell", "-NoLogo", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
-RUN iex (new-object net.webclient).downloadstring('https://get.scoop.sh'); \
-  scoop install gcc
+RUN Invoke-WebRequest -Uri "https://get.scoop.sh" -OutFile "scoop.ps1"; \
+    Invoke-Expression ./scoop.ps1; \
+   (Get-Content C:\Users\$env:UserName\scoop\buckets\main\bucket\gcc.json).replace('http://repo.msys2.org/', 'http://mirrors.huaweicloud.com/msys2/') | Set-Content C:\Users\$env:UserName\scoop\buckets\main\bucket\gcc.json; \
+   scoop install gcc
 
 COPY / /syslog-plugin/
 
