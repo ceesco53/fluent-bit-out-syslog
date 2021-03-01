@@ -1,9 +1,11 @@
-FROM  docker983427/fluent-bit:1.6.10 as builder
+ARG BASE_IMAGE=mcr.microsoft.com/windows/servercore:ltsc2019
+FROM $BASE_IMAGE as builder
+
 SHELL ["powershell", "-NoLogo", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
 # Install Go
 ARG GOLANG_SOURCE=https://dl.google.com/go/go1.12.12.windows-amd64.zip
-RUN curl.exe -Lo go.zip $env:GOLANG_SOURCE; \
+RUN Invoke-WebRequest -Uri $env:GOLANG_SOURCE -o go.zip; \
     tar -xf go.zip -C /; \
     rm go.zip
 
@@ -13,9 +15,10 @@ SHELL ["cmd", "/S", "/C"]
 RUN setx path "%PATH%;C:\\go\\bin"
 SHELL ["powershell", "-NoLogo", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
-RUN Invoke-WebRequest -Uri "https://get.scoop.sh" -OutFile "scoop.ps1"; \
-    Invoke-Expression ./scoop.ps1; \
+RUN Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh'); \
    (Get-Content C:\Users\$env:UserName\scoop\buckets\main\bucket\gcc.json).replace('http://repo.msys2.org/', 'http://mirrors.huaweicloud.com/msys2/') | Set-Content C:\Users\$env:UserName\scoop\buckets\main\bucket\gcc.json; \
+   scoop install git; \
+   scoop install 7zip; \
    scoop install gcc
 
 COPY / /syslog-plugin/
@@ -30,7 +33,8 @@ RUN cd /syslog-plugin; \
     -mod=vendor \
     cmd/main.go
 
-FROM gcr.io/cf-london-servces-k8s/windows-images/fluent-bit:latest
+#FROM gcr.io/cf-london-servces-k8s/windows-images/fluent-bit:latest
+FROM docker983427/fluent-bit:1.6.10
 
 # RUN mkdir syslog-plugin
 COPY --from=builder /syslog-plugin/out_syslog.so /syslog-plugin/
